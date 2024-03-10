@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전국 약국 지도</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=p587vzx03i&amp;submodules=geocoder"></script>
+</head>
+<body class="bg-dark">
+  <nav class="navbar bg-dark border-bottom border-body navbar-expand-lg bg-body-tertiary" data-bs-theme="dark">
+    <div class="container">
+      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="#fff" class="bi bi-capsule me-2" viewBox="0 0 16 16">
+        <path d="M1.828 8.9 8.9 1.827a4 4 0 1 1 5.657 5.657l-7.07 7.071A4 4 0 1 1 1.827 8.9Zm9.128.771 2.893-2.893a3 3 0 1 0-4.243-4.242L6.713 5.429l4.243 4.242Z"/>
+      </svg>
+      <a class="navbar-brand" href="/test2.html">약국 지도</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" href="/searchList">검색 목록</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">즐겨찾기</a>
+          </li>
+        </ul>
+        <form class="d-flex" role="search">
+          <!-- <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search"> -->
+          <div class="input-group me-2">
+            <label class="input-group-text" for="inputGroupSelect01">시도</label>
+            <select class="form-select" id="selectA" name="sido" onchange="updateSelectB()">
+              <option value="1">현위치</option>
+              <option value="서울특별시">서울특별시</option>
+              <option value="부산광역시">부산광역시</option>
+            </select>
+          </div>
+          <div class="input-group me-2">
+            <label class="input-group-text" for="inputGroupSelect02">시군구</label>
+            <select class="form-select" id="selectB" name="gugun">
+            </select>
+          </div>
+          <button id="submit" class="btn btn-outline-success" type="submit" style="width: 110px;">검색</button>          
+        </form>
+      </div>
+    </div>
+  </nav>
+  <div class="container" id="map" style="width:100%;height:calc(100vh - 57px);"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+<script>
+// 시군구 데이터 정의
+const cityData = {
+  서울특별시: ["강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"],
+  부산광역시: ["강서구", "금정구", "남구", "동구", "동래구", "북구", "사상구", "사하구", "서구", "수영구", "연제구", "영도구", "중구", "진구", "해운대구", "기장군"]
+};
+
+function updateSelectB() {
+  //대분류
+  var selectA = document.getElementById("selectA");
+  var selectedValue = selectA.value;
+  // console.log(sido);
+  //소분류
+  var selectB = document.getElementById("selectB");
+
+  //옵션 초기화
+  selectB.innerHTML = "";
+
+  //
+  if (selectedValue !== "1") {
+    // If selectedValue is not "1" (not the default option)
+    // Use cityData[selectedValue] to get the corresponding city options
+    addOption(selectB, "", "전체");
+    cityData[selectedValue].forEach(city => {
+      addOption(selectB, city, city);
+    });
+  } else {
+    addOption(selectB, "1", "현위치");
+  }
+}
+
+//select에 따른 옵션 value, text 추가함수
+function addOption(select, value, text) {
+  var option = document.createElement("option");
+  option.value = value;
+  option.text = text;
+  select.add(option);
+}
+
+//초기화
+updateSelectB();
+
+//네이버 MAP API
+$(document).ready(async function(){
+  let XY = await getLocation();
+  let sido = "";
+  let gugun = "";
+
+  //네이버 지도 객체 생성
+  var map = new naver.maps.Map("map", {
+    center: new naver.maps.LatLng(XY.lat, XY.lng),
+    zoom: 15,
+    mapTypeControl: true
+  });
+  
+  let lc = new naver.maps.LatLng(XY.lat, XY.lng);
+            //약국 별 마커 생성
+            let marker = new naver.maps.Marker({
+              map: map,
+              position: lc,
+              icon:'./123.png'
+            });
+
+
+  await naver.maps.Service.reverseGeocode({
+      location: new naver.maps.LatLng(XY.lat, XY.lng)
+       
+    //아래의 콜백함수를 실행하여 
+    }, function(status, response){
+      //시도,구군을 추출하여 
+      let result = response.result;
+      let items = result.items;
+      //console.log(items);
+      let sido_arr = items[0].addrdetail.sido.split(" ");
+      let gugun_arr = items[0].addrdetail.sigugun.split(" ");
+
+      if(sido_arr.length == 1){
+        sido = sido_arr[0];
+        gugun = gugun_arr[0];
+      }
+      else if(sido_arr.length > 1){
+        sido = sido_arr[0];
+        gugun = sido_arr[1];
+      }
+      console.log(sido);
+      console.log(gugun);
+
+      //무조건 실행되는 위치를 찾아 강제 초기화...
+      searchAddressToCoordinate(sido,gugun);
+    });
+
+    //window.location.search > URL의 쿼리 문자열 추출
+    //URLSearchParams 객체로 변환
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('sido') && params.get('gugun')) {
+      sido = params.get('sido');
+      gugun = params.get('gugun');
+      searchAddressToCoordinate(sido, gugun);
+    }
+
+    //초기화 함수(작동을 잘안함...)
+    naver.maps.onJSContentLoaded = initGeocoder;
+
+function searchAddressToCoordinate(sido,gugun) {
+    address = sido + " " + gugun;
+    console.log(address);
+    naver.maps.Service.geocode({
+        query: address
+    }, function(status, response) {
+        if (status === naver.maps.Service.Status.ERROR) {
+            return alert('Something Wrong!');
+        }
+
+        if (response.v2.meta.totalCount === 0) {
+            return alert('totalCount' + response.v2.meta.totalCount);
+        }
+
+        //주소를 지오코딩 한 위,경도 item에 할당
+        var item = response.v2.addresses[0];
+        // var point = new naver.maps.Point(item.x, item.y);
+
+      //index.js의 app.get("/list")를 실행
+      $.ajax({
+        url: "/list",
+        type: "GET",
+        cache: false,
+        dataType: "json",
+        //파라미터 설정
+        data: {"Q0": sido,"Q1": gugun,"QT": "","QN": "","ORD": "","pageNo": "1","numOfRows": "10"},
+        //결과 성공 콜백함수
+        success: function(data){
+          console.log(data);
+          //지도 API 기본 셋팅
+          //지도를 삽입할 HTML 요소 또는 HTML 요소의 id를 지정합니다.
+          var mapDiv = document.getElementById('map'); // 'map'으로 선언해도 동일
+          //옵션 없이 지도 객체를 생성하면 검색 위치를 중심으로 하는 15 레벨의 지도가 생성됩니다.
+          var mapOptions = {
+            center: new naver.maps.Point(item.x, item.y),
+            zoom: 15      
+          }
+          var map = new naver.maps.Map(mapDiv, mapOptions);
+
+          data.items.item.forEach(function(item, index){
+            let dutyName = item.dutyName;
+            let dytyAddr = item.dutyAddr;
+            let dutyTel1 = item.dutyTel1;
+
+            let dutyTime ="";
+            if(item.dutyTime1s && item.dutyTime1c){
+              dutyTime += "월요일 " + item.dutyTime1s + " ~ " + item.dutyTime1c + "<br>";
+            }
+            if(item.dutyTime2s && item.dutyTime2c){
+              dutyTime += "화요일 " + item.dutyTime2s + " ~ " + item.dutyTime2c + "<br>";
+            }
+            if(item.dutyTime3s && item.dutyTime3c){
+              dutyTime += "수요일 " + item.dutyTime3s + " ~ " + item.dutyTime3c + "<br>";
+            }
+            if(item.dutyTime4s && item.dutyTime4c){
+              dutyTime += "목요일 " + item.dutyTime4s + " ~ " + item.dutyTime4c + "<br>";
+            }
+            if(item.dutyTime5s && item.dutyTime5c){
+              dutyTime += "금요일 " + item.dutyTime5s + " ~ " + item.dutyTime5c + "<br>";
+            }
+            if(item.dutyTime6s && item.dutyTime6c){
+              dutyTime += "토요일 " + item.dutyTime6s + " ~ " + item.dutyTime6c + "<br>";
+            }
+            if(item.dutyTime7s && item.dutyTime7c){
+              dutyTime += "일요일 " + item.dutyTime7s + " ~ " + item.dutyTime7c + "<br>";
+            }
+            if(item.dutyTime8s && item.dutyTime8c){
+              dutyTime += "공휴일 " + item.dutyTime8s + " ~ " + item.dutyTime8c + "<br>";
+            }
+
+            //약국 API로 부터 받은 위도, 경도를 가지고 각각의 약국 위치 설정
+            let pharmacy_location = new naver.maps.LatLng(item.wgs84Lat, item.wgs84Lon);
+            //약국 별 마커 생성
+            let marker = new naver.maps.Marker({
+              map: map,
+              position: pharmacy_location,
+              icon:'./2025.gif'
+            });
+
+            //정보창 html내용 설정
+            var contentString = [
+                    '<div class="iw_inner">',
+                    '   <h3>'+ dutyName +'</h3>',
+                    '   <p>'+ dytyAddr +'<br />',
+                    '       '+ dutyTel1 +'<br />',
+                    '       '+ dutyTime,
+                    '   </p>',
+                    '</div>'
+                ].join('');
+                    
+            //정보창 옵션 설정
+            var infowindow = new naver.maps.InfoWindow({
+                content: contentString,
+                maxWidth: 440,
+                backgroundColor: "#eee",
+                borderColor: "#2db400",
+                borderWidth: 5,
+                anchorSize: new naver.maps.Size(30, 30),
+                anchorSkew: true,
+                anchorColor: "#eee",
+                pixelOffset: new naver.maps.Point(20, -20)
+            });
+
+            //infowindow 열고 닫기 함수
+            naver.maps.Event.addListener(marker, "click", function(e) {
+                if (infowindow.getMap()) {
+                    infowindow.close();
+                } else {
+                    infowindow.open(map, marker);
+                }
+            });
+          });
+        },
+        //에러 발생시 콜백함수
+        error: function(req,status,err) {
+          console.log(err);
+        }
+      });
+    });
+}
+
+//초기화 함수(start보기 힘듬...)
+function initGeocoder() {
+  console.log('start');
+
+  searchAddressToCoordinate(sido,gugun);
+}
+
+  //검색 함수
+  $('#submit').on('click', function(e) {
+      e.preventDefault();
+      //select옵션의 value가 1일때 초기 sido,gugun할당
+      if($('#selectA').val() != "1"){
+        sido = $('#selectA').val();  
+      }
+      if($('#selectB').val() != "1"){
+        gugun = $('#selectB').val();
+      }
+
+      searchList(sido,gugun);
+      searchAddressToCoordinate(sido,gugun);
+  });
+  
+  //검색기록 서버에 전달 함수
+  function searchList(sido,gugun){
+    $.ajax({
+        url: "/create",
+        type: "POST",
+        cache: false,
+        //파라미터 설정
+        data: {"sido": sido,"gugun": gugun},
+        //결과 성공 콜백함수
+        success: function(_){
+          console.log('insert success');
+        },
+        //에러 발생시 콜백함수
+        error: function(req,status,err) {
+          console.log(err);
+        }
+    });
+  }
+
+});
+
+//현재 위치좌표 구하는 함수
+async function getLocation() {
+    //위도 경도 담을 변수
+    let XY = new Object();
+
+    if(navigator.geolocation){
+      let promise = new Promise((res,rej) => {
+        navigator.geolocation.getCurrentPosition((position) => {
+          res(position);
+        });
+      });
+
+      let position = await promise;
+      XY.lat = position.coords.latitude;
+      XY.lng = position.coords.longitude;
+      XY.lat = 37.5759995; //임시지정
+      XY.lng = 126.9768907; //임시지정
+    }
+    return XY;
+}
+</script>
+</body>
+</html>                                              

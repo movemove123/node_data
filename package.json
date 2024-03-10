@@ -1,0 +1,24 @@
+{
+  "name": "node_data",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/navermaps": "^3.7.4",
+    "axios": "^1.6.3",
+    "body-parser": "^1.20.2",
+    "cheerio": "^1.0.0-rc.12",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "iconv-lite": "^0.6.3",
+    "mariadb": "^3.2.3",
+    "mysql": "^2.18.1",
+    "puppeteer": "^21.6.1",
+    "request": "^2.88.2"
+  }
+}
